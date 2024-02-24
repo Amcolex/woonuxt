@@ -144,7 +144,7 @@ const formData = ref({
 const message = ref('');
 
 const submitToHubSpot = async (formData) => {
-  const endpoint = `https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_ID}/${HUBSPOT_FORM_CONTACT_ID}`;
+  const endpoint = `https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_PORTAL_ID}/${HUBSPOT_FORM_CONTACT_ID}`;
 
   const headers = {
     "Content-Type": "application/json",
