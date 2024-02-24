@@ -56,7 +56,6 @@ const versionInfo = `WooNuxt v${wooNuxtVersionInfo}`;
         </p>
       </div>
       <SocialIcons class="ml-auto" />
-      <NewsletterSignup/>
     </div>
   </footer>
 </template>

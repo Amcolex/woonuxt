@@ -15,6 +15,7 @@ useSeoMeta({
 <template>
   <main>
     <HeroBanner />
+    <NewsletterSignup/>
   </main>
 </template>
 
