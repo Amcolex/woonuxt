@@ -124,8 +124,13 @@
 <script setup>
 import { ref } from 'vue';
 
-const HUBSPOT_PORTAL_ID = '144207713';
-const HUBSPOT_FORM_ID = 'd64541d3-329e-45e9-abd2-83e77dd58cf8';
+const config = useRuntimeConfig()
+const HUBSPOT_FORM_CONTACT_ID = config.public.hubspotFormIdContact;
+const HUBSPOT_PORTAL_ID = config.public.hubspotPortalId;
+
+console.log(HUBSPOT_FORM_CONTACT_ID);
+console.log(HUBSPOT_PORTAL_ID);
+
 
 const formData = ref({
   email: '',
@@ -139,7 +144,7 @@ const formData = ref({
 const message = ref('');
 
 const submitToHubSpot = async (formData) => {
-  const endpoint = `https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_PORTAL_ID}/${HUBSPOT_FORM_ID}`;
+  const endpoint = `https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_ID}/${HUBSPOT_FORM_CONTACT_ID}`;
 
   const headers = {
     "Content-Type": "application/json",

@@ -33,17 +33,18 @@
 <script setup>
 import { ref } from 'vue';
 
-// Replace these with your actual HubSpot portal ID and form ID
-const HUBSPOT_PORTAL_ID = '144207713';
-const HUBSPOT_FORM_ID = '84e10cf5-c8cd-46a5-9902-15b915b0a7b0';
+const message = ref('');
 
+const config = useRuntimeConfig()
+const HUBSPOT_FORM_NEWSLETTER_ID = config.public.hubspotFormIdNewsletter;
+const HUBSPOT_PORTAL_ID = config.public.hubspotPortalId;
 const formData = ref({
   email: '',
 });
 
 
 const submitToHubSpot = async (formData) => {
-  const endpoint = `https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_PORTAL_ID}/${HUBSPOT_FORM_ID}`;
+  const endpoint = `https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_PORTAL_ID}/${HUBSPOT_FORM_NEWSLETTER_ID}`;
 
   const headers = {
     "Content-Type": "application/json",

@@ -3,8 +3,17 @@ export default defineNuxtConfig({
   extends: ['./woonuxt_base'],
   components: [{ path: './components', pathPrefix: false }],
   plugins: [
-    '~/plugins/hubspot.js', 
+    '~/plugins/hubspot.js',
+    '~/plugins/clarity-tracking.js',
   ],
+  runtimeConfig: {
+    public: {
+      clarityTrackingId: process.env.CLARITY_TRACKING_ID,
+      hubspotPortalId: process.env.HUBSPOT_PORTAL_ID,
+      hubspotFormIdNewsletter: process.env.HUBSPOT_FORM_NEWSLETTER_ID,
+      hubspotFormIdContact: process.env.HUBSPOT_FORM_CONTACT_ID
+    }
+  },
 
   /**
    * Depending on your servers capabilities, you may need to adjust the following settings.
