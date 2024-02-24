@@ -5,13 +5,15 @@ export default defineNuxtConfig({
   plugins: [
     '~/plugins/hubspot.js',
     '~/plugins/clarity-tracking.js',
+    '~/plugins/google-analytics.js',
   ],
   runtimeConfig: {
     public: {
       clarityTrackingId: process.env.CLARITY_TRACKING_ID,
       hubspotPortalId: process.env.HUBSPOT_PORTAL_ID,
       hubspotFormIdNewsletter: process.env.HUBSPOT_FORM_NEWSLETTER_ID,
-      hubspotFormIdContact: process.env.HUBSPOT_FORM_CONTACT_ID
+      hubspotFormIdContact: process.env.HUBSPOT_FORM_CONTACT_ID,
+      gaId: process.env.GA_TRACKING_ID, // Access the GA ID
     }
   },
 
