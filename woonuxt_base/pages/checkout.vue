@@ -47,39 +47,82 @@ const payNow = async () => {
   buttonText.value = t('messages.general.processing');
   try {
     if (orderInput.value.paymentMethod === 'stripe') {
-      const cardElement = card.value.stripeElement;
 
-      const total = Number(cart?.value?.total?.replace("$", '')) * 100
+      // graphql checkout with failed payment:
+      const billing = {
+        address1: customer.value.billing?.address1,
+        address2: customer.value.billing?.address2,
+        city: customer.value.billing?.city,
+        company: customer.value.billing?.company,
+        country: customer.value.billing?.country,
+        email: customer.value.billing?.email,
+        firstName: customer.value.billing?.firstName,
+        lastName: customer.value.billing?.lastName,
+        phone: customer.value.billing?.phone,
+        postcode: customer.value.billing?.postcode,
+        state: customer.value.billing?.state,
+      };
 
-      const res = await createClientSecret({ amount: parseInt(total), currency: 'usd' })
+      const shipping = {
+        address1: customer.value.shipping?.address1,
+        address2: customer.value.shipping?.address2,
+        city: customer.value.shipping?.city,
+        company: customer.value.shipping?.company,
+        country: customer.value.shipping?.country,
+        email: customer.value.billing?.email,
+        firstName: customer.value.shipping?.firstName,
+        lastName: customer.value.shipping?.lastName,
+        phone: customer.value.shipping?.phone,
+        postcode: customer.value.shipping?.postcode,
+        state: customer.value.shipping?.state,
+      };
 
-     
+      let checkoutPayload = {
+        billing,
+        shipping: orderInput.value.shipToDifferentAddress ? shipping : billing,
+        metaData: orderInput.value.metaData,
+        paymentMethod: orderInput.value.paymentMethod,
+        customerNote: orderInput.value.customerNote,
+        shipToDifferentAddress: orderInput.value.shipToDifferentAddress,
+        transactionId: '',
+        isPaid: false
+      };
 
-      orderInput.value.metaData.push({ key: '_stripe_intent_id', value: res?.id });
-      orderInput.value.transactionId = res?.id || '';
-      orderInput.value.isPaid = true
-      const getCheckout = await proccessCheckout();
-
-      if (!getCheckout || getCheckout?.result != "success") {
-        return
+      // create account if checked
+      if (orderInput.value.createAccount) {
+        // @ts-ignore
+        checkoutPayload.account = {
+          username: customer.value.billing?.email,
+          password: orderInput.value.password,
+        };
       }
 
+      console.log('checkoutPayload', checkoutPayload);
+      const { checkout } = await GqlCheckout(checkoutPayload);
+      console.log('checkout', checkout);
+
+      const orderKey = checkout?.order.orderKey;
+      console.log('orderKey', orderKey);
+
+      const cardElement = card.value.stripeElement;
+      const res = await createClientSecret({ orderKey: orderKey })
+      console.log('Client Secret', res)
       const client_SECRET = await res['client_secret']
       const payment_secure = await elms.value.instance.confirmCardPayment(client_SECRET, {
         payment_method: {
           card: cardElement,
-
         }
+
       });
 
       if (payment_secure.error) {
-        await updateOrderStatus({ orderId: getCheckout?.order?.databaseId })
+        // await updateOrderStatus({ orderId: getCheckout?.order?.databaseId })
         alert('payment failed please try again later')
-        window.location.reload();
+        // window.location.reload();
         throw new Error('payment failed please try again later')
       }
 
-      await handleRedirection({ checkout: getCheckout })
+      await handleRedirection({ checkout: checkout })
     }
   } catch (error) {
     console.log(error, 'clientSeretclientSeretclientSeretclientSeret')
