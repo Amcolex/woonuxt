@@ -105,8 +105,17 @@ const payNow = async () => {
       console.log('orderKey', orderKey);
 
       const cardElement = card.value.stripeElement;
-      const res = await createClientSecret({ orderKey: orderKey })
-      console.log('Client Secret', res)
+
+      let payload = { orderKey : orderKey}
+      console.log('payload', payload);
+      let result = await GqlCreatePaymentIntent(payload);
+
+      // parse json of result.createPaymentIntent.data
+      const res = JSON.parse(result.createPaymentIntent.data)
+      console.log('res', res);
+
+      // const res = await createClientSecret({ orderKey: orderKey })
+      console.log('Client Secret', result)
       const client_SECRET = await res['client_secret']
       const payment_secure = await elms.value.instance.confirmCardPayment(client_SECRET, {
         payment_method: {

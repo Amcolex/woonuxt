@@ -1,0 +1,7 @@
+mutation CreatePaymentIntent($orderKey: String = "") {
+  createPaymentIntent(input: {orderKey: $orderKey}) {
+    clientMutationId
+    data
+    status
+  }
+}
