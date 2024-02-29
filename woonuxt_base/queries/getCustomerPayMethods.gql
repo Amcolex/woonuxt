@@ -1,0 +1,12 @@
+#import "~/queries/fragments/CustomerFragment.gql"
+
+query getCustomerPaymentMethods {
+  customer {
+    availablePaymentMethodsCC {
+      last4
+      tokenId
+      isDefault
+      id
+    }
+  }
+}
