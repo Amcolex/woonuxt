@@ -47,39 +47,91 @@ const payNow = async () => {
   buttonText.value = t('messages.general.processing');
   try {
     if (orderInput.value.paymentMethod === 'stripe') {
-      const cardElement = card.value.stripeElement;
 
-      const total = Number(cart?.value?.total?.replace("$", '')) * 100
+      // graphql checkout with failed payment:
+      const billing = {
+        address1: customer.value.billing?.address1,
+        address2: customer.value.billing?.address2,
+        city: customer.value.billing?.city,
+        company: customer.value.billing?.company,
+        country: customer.value.billing?.country,
+        email: customer.value.billing?.email,
+        firstName: customer.value.billing?.firstName,
+        lastName: customer.value.billing?.lastName,
+        phone: customer.value.billing?.phone,
+        postcode: customer.value.billing?.postcode,
+        state: customer.value.billing?.state,
+      };
 
-      const res = await createClientSecret({ amount: parseInt(total), currency: 'usd' })
+      const shipping = {
+        address1: customer.value.shipping?.address1,
+        address2: customer.value.shipping?.address2,
+        city: customer.value.shipping?.city,
+        company: customer.value.shipping?.company,
+        country: customer.value.shipping?.country,
+        email: customer.value.billing?.email,
+        firstName: customer.value.shipping?.firstName,
+        lastName: customer.value.shipping?.lastName,
+        phone: customer.value.shipping?.phone,
+        postcode: customer.value.shipping?.postcode,
+        state: customer.value.shipping?.state,
+      };
 
-     
+      let checkoutPayload = {
+        billing,
+        shipping: orderInput.value.shipToDifferentAddress ? shipping : billing,
+        metaData: orderInput.value.metaData,
+        paymentMethod: orderInput.value.paymentMethod,
+        customerNote: orderInput.value.customerNote,
+        shipToDifferentAddress: orderInput.value.shipToDifferentAddress,
+        transactionId: '',
+        isPaid: false
+      };
 
-      orderInput.value.metaData.push({ key: '_stripe_intent_id', value: res?.id });
-      orderInput.value.transactionId = res?.id || '';
-      orderInput.value.isPaid = true
-      const getCheckout = await proccessCheckout();
-
-      if (!getCheckout || getCheckout?.result != "success") {
-        return
+      // create account if checked
+      if (orderInput.value.createAccount) {
+        // @ts-ignore
+        checkoutPayload.account = {
+          username: customer.value.billing?.email,
+          password: orderInput.value.password,
+        };
       }
 
+      console.log('checkoutPayload', checkoutPayload);
+      const { checkout } = await GqlCheckout(checkoutPayload);
+      console.log('checkout', checkout);
+
+      const orderKey = checkout?.order.orderKey;
+      console.log('orderKey', orderKey);
+
+      const cardElement = card.value.stripeElement;
+
+      let payload = { orderKey : orderKey}
+      console.log('payload', payload);
+      let result = await GqlCreatePaymentIntent(payload);
+
+      // parse json of result.createPaymentIntent.data
+      const res = JSON.parse(result.createPaymentIntent.data)
+      console.log('res', res);
+
+      // const res = await createClientSecret({ orderKey: orderKey })
+      console.log('Client Secret', result)
       const client_SECRET = await res['client_secret']
       const payment_secure = await elms.value.instance.confirmCardPayment(client_SECRET, {
         payment_method: {
           card: cardElement,
-
         }
+
       });
 
       if (payment_secure.error) {
-        await updateOrderStatus({ orderId: getCheckout?.order?.databaseId })
+        // await updateOrderStatus({ orderId: getCheckout?.order?.databaseId })
         alert('payment failed please try again later')
-        window.location.reload();
+        // window.location.reload();
         throw new Error('payment failed please try again later')
       }
 
-      await handleRedirection({ checkout: getCheckout })
+      await handleRedirection({ checkout: checkout })
     }
   } catch (error) {
     console.log(error, 'clientSeretclientSeretclientSeretclientSeret')
@@ -127,122 +179,29 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col min-h-[600px]">
-    <LoadingIcon v-if="!cart" class="m-auto" />
-    <template v-else>
-      <div v-if="cart.isEmpty" class="flex flex-col items-center justify-center flex-1 mb-12">
-        <div class="mb-20 text-xl text-gray-300">{{ $t('messages.shop.cartEmpty') }}</div>
-      </div>
-
-      <form name="myform" novalidate v-else
-        class="container flex flex-wrap items-start gap-8 my-16 justify-evenly lg:gap-20" @submit.prevent="payNow">
-        <div class="grid w-full max-w-2xl gap-8 checkout-form md:flex-1">
-          <!-- Customer details -->
-          <div>
-            <h2 class="w-full mb-2 text-2xl font-semibold leading-none">Contact Information</h2>
-            <p v-if="!viewer" class="mt-1 text-sm text-gray-500">Already have an account? <a href="/my-account"
-                class="text-primary text-semibold">Log in</a>.</p>
-            <div class="w-full mt-4">
-              <label for="email">{{ $t('messages.billing.email') }}</label>
-              <input v-model="customer.billing.email" placeholder="johndoe@email.com" type="email" name="email"
-                :class="{ 'has-error': isInvalidEmail }" @blur="checkEmailOnBlur(customer.billing.email)"
-                @input="checkEmailOnInput(customer.billing.email)" required />
-              <Transition name="scale-y" mode="out-in">
-                <div v-if="isInvalidEmail" class="mt-1 text-sm text-red-500">Invalid email address</div>
-              </Transition>
-            </div>
-            <div class="w-full my-2" v-if="orderInput.createAccount">
-              <label for="email">{{ $t('messages.account.password') }}</label>
-              <PasswordInput id="password" class="my-2" v-model="orderInput.password" placeholder="Password"
-                :required="true" />
-            </div>
-            <div v-if="!viewer" class="flex items-center gap-2 my-2">
-              <label for="creat-account">Create an account?</label>
-              <input id="creat-account" v-model="orderInput.createAccount" type="checkbox" name="creat-account" />
-            </div>
-          </div>
-
-          <div>
-            <h2 class="w-full mb-3 text-2xl font-semibold">{{ $t('messages.billing.billingDetails') }}</h2>
-            <BillingDetails v-model="customer.billing" :sameAsShippingAddress="orderInput.shipToDifferentAddress" />
-          </div>
-
-          <label for="shipToDifferentAddress" class="flex items-center gap-2">
-            <span>{{ $t('messages.billing.differentAddress') }}</span>
-            <input id="shipToDifferentAddress" v-model="orderInput.shipToDifferentAddress" type="checkbox"
-              name="shipToDifferentAddress" />
-          </label>
-
-          <Transition name="scale-y" mode="out-in">
-            <div v-show="orderInput.shipToDifferentAddress">
-              <h2 class="mb-4 text-xl font-semibold">{{ $t('messages.general.shippingDetails') }}</h2>
-              <ShippingDetails v-model="customer.shipping" />
-            </div>
-          </Transition>
-
-          <!-- Shipping methods -->
-          <div v-if="cart.availableShippingMethods.length">
-            <h3 class="mb-4 text-xl font-semibold">{{ $t('messages.general.shippingSelect') }}</h3>
-            <ShippingOptions :options="cart.availableShippingMethods[0].rates"
-              :active-option="cart.chosenShippingMethods[0]" />
-          </div>
-
-          <!-- Pay methods -->
-          <div v-if="paymentGateways.length" class="mt-2 col-span-full">
-            <h2 class="mb-4 text-xl font-semibold">{{ $t('messages.billing.paymentOptions') }}</h2>
-            <PaymentOptions v-model="orderInput.paymentMethod" class="mb-4" :paymentGateways="paymentGateways" />
-
-            <Transition name="scale-y" mode="out-in">
-              <StripeElements v-show="orderInput.paymentMethod == 'stripe'" v-slot="{ elements, instance }" ref="elms"
-                :stripe-key="stripeKey" :instance-options="instanceOptions" :elements-options="elementsOptions">
-                <StripeElement ref="card" :elements="elements" :options="cardOptions" />
-              </StripeElements>
-            </Transition>
-          </div>
-
-          <!-- Order note -->
-          <div>
-            <h2 class="mb-4 text-xl font-semibold">{{ $t('messages.shop.orderNote') }} ({{ $t('messages.general.optional')
-            }})</h2>
-            <textarea id="order-note" v-model="orderInput.customerNote" name="order-note" class="w-full" rows="4"
-              :placeholder="$t('messages.shop.orderNotePlaceholder')"></textarea>
-          </div>
-        </div>
-
-        <OrderSummary>
-          <button
-            class="flex items-center justify-center w-full gap-3 p-3 mt-4 font-semibold text-center text-white rounded-lg shadow-md bg-primary hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-gray-400"
-            :disabled="isCheckoutDisabled">
-            {{ buttonText }}
-            <LoadingIcon v-if="isProcessingOrder" color="#fff" size="18" />
-          </button>
-        </OrderSummary>
-      </form>
-    </template>
+  <div class="checkout-container">
+    <iframe
+      src="https://shop.naviq.com/checkout"
+      frameborder="0"
+      width="100%"
+      height="100%"
+      allowfullscreen>
+    </iframe>
   </div>
 </template>
 
-<style lang="postcss">
-.checkout-form input[type='text'],
-.checkout-form input[type='email'],
-.checkout-form input[type='tel'],
-.checkout-form input[type='password'],
-.checkout-form textarea,
-.checkout-form .StripeElement,
-.checkout-form select {
-  @apply bg-white border rounded-md outline-none border-gray-300 shadow-sm w-full py-2 px-4;
-}
+<script setup>
+// You can add your JavaScript logic here if needed
+</script>
 
-.checkout-form input.has-error,
-.checkout-form textarea.has-error {
-  @apply border-red-500;
+<style scoped>
+/* Add styles for your checkout container or iframe as necessary */
+.checkout-container {
+  max-width: 800px; /* Adjust the width as necessary */
+  margin: auto;
 }
-
-.checkout-form label {
-  @apply my-1.5 text-xs text-gray-600 uppercase;
-}
-
-.checkout-form .StripeElement {
-  padding: 1rem 0.75rem;
+iframe {
+  width: 100%; /* Ensure iframe occupies the container width */
+  border: none; /* Optional: Remove the border */
 }
 </style>
